@@ -1,2 +1,7 @@
 # int-Alicechung
-int-Alicechung created by GitHub Classroom
+
+You can access the results by the link(ShinyApps.io) below:
+https://alicechung.shinyapps.io/DVHW3_alicechung_rev/
+
+
+
