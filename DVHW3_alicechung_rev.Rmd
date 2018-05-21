@@ -1,0 +1,189 @@
+---
+title: "DV HW3"
+author: "Alice Mee Seon Chung"
+output: 
+  #html_document
+  flexdashboard::flex_dashboard:
+    vertical_layout: scroll
+    orientation: rows
+#runtime: shiny
+runtime: shiny_prerendered
+---
+
+```{r global, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#library(foreign)
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(knitr)
+library(plotly)
+library(shiny)
+#library(hexbin)
+library(flexdashboard)
+packageVersion('plotly')
+set.seed(1)
+#setwd("~/Desktop/2018SPRING/DV/HW3")
+```
+
+
+```{r, include=FALSE}
+d_adult_10_12<-read.csv('d_adult1_10_12_provcd.csv')
+d_adult1_10_12<-read.csv('d_adult_10_12_urban.csv')
+
+d_adult_10_12$provcd<-as.character(d_adult_10_12$provcd)
+d_adult1_10_12$provcd<-as.character(d_adult1_10_12$provcd)
+```
+
+Introduction
+=======================================================================
+
+In this project, we aim to investigate a pattern between the mean income and gender gap by regions in China. We decide to use this dataset in final project, so this project focuses on delivering a sketch of dataset with interested variables, mean of income, gender and provinces. 
+
+The data is from China Family Panel Studies (CFPS), which is the first large-scale academically oriented longitudinal survey data in China. We use the data from 2010 and 2012. For further research, we will expand the period, but we will only focus on the comparison between two years in this project. This data contains plenty of valuable information about Chinese family and society. We have 33,600 observations with 1,484 variables in 2010 and 35,719 observations with 1,744 variables in 2012. Among these variables, we focus on the interested variables, `income of individual adult`, `gender`, `province`, and `the information of living area (urban or rural)`. Using these variables, we can measure `gender ratio` and `mean of income` by province and further by the information of living area within province. Our data is aggregated by province level and there are 27 different provinces. We want to use population information from the data, but the data does not have any information about population. Instead we decide to use the frequency of respondent by province to indicate the size of province, which visualized as bubble size in the graph. 
+
+In the graph section, firstly you can choose the graph category: `by province`, `by urban/rural`. With by province option, we will show the data by province level with selected `year`. Moreover, we add the option to select `the specific region` for the case that you only want to see the interested province. With `by urban/rural` option, we will show the data by the information of living area within province. You can also select `the specific region` that you only want to see in the graph at the province option. 
+I hope you can explore the data with graphs and discover interesting findings.
+
+
+Mean Income and Gender Ratio By Regions
+=======================================================================
+
+
+Input {.sidebar}
+---------------------------------------------------
+
+```{r, echo=FALSE}
+selectizeInput('type', label = "Select Catetory",
+            choices = c("By Province","By Rural/Urban"), selected = "By Province")
+selectizeInput('year', label = "Select Year",
+            choices = unique(d_adult_10_12$year), selected = 2010)
+selectizeInput('province', label = "Select Province",
+            choices = c("All", sort(as.character(unique(d_adult_10_12$provcd)))),
+            selected = "All")
+```
+```{r, echo=FALSE}
+df_selected<- reactive({
+  d_adult_10_12[d_adult_10_12$year == input$year, ]
+})
+
+df_selected_rural<- reactive({
+  d_adult1_10_12[d_adult1_10_12$year == input$year, ]
+})
+```
+
+
+Row {data-width=800}
+--------------------------------------------------
+
+### Result
+
+```{r, echo=FALSE}
+
+plot_province<-function(data){
+  ggplot(data = data,
+             aes(x = mean_income, y = ratio, 
+               fill = provcd))+ 
+  geom_point(aes(size = count), shape = 21, alpha = 0.7)+
+  labs(size = 'Province ID')+
+  geom_hline(yintercept = 1, color = "blue", linetype = 2, size = 0.5) +
+  scale_size_continuous(range = c(1,8.5)) +
+  scale_x_continuous(name = "Mean of Income", limits = c(0, 40000)) +
+  scale_y_continuous(name = "Gender Ratio (Male/Female)(%)", limits = c(0.8, 1.2)) +
+  guides(fill=guide_legend(title='Province ID'))+
+  theme(legend.position = "bottom", 
+        panel.grid.major = element_line(colour = "#d3d3d3"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())}
+
+plot_province_city<- function(data){
+  ggplot(data =data,
+             aes(x = mean_income, y = ratio, 
+               fill = provcd))+ 
+  geom_point(aes(size = count), shape = 21, alpha = 0)+
+  geom_point(data = filter(data, 
+                           provcd %in% input$province), 
+             aes(size = count, fill='blank'), shape = 21) +
+  labs(size = 'Province ID')+
+  geom_hline(yintercept = 1, color = "blue", linetype = 2, size = 0.5) +
+  scale_size_continuous(range = c(1,8.5)) +
+  scale_x_continuous(name = "Mean of Income", limits = c(0, 40000)) +
+  scale_y_continuous(name = "Gender Ratio (Male/Female)(%)", limits = c(0.8, 1.2)) +
+  guides(fill=guide_legend(title='Province ID'))+
+  theme(legend.position = "bottom", 
+        panel.grid.major = element_line(colour = "#d3d3d3"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())}
+
+
+plot_urban<-function(data) {
+  ggplot(data = data,
+             aes(x = mean_income, y = ratio, fill = urban, label = provcd))+
+  geom_point(aes(size = count), shape = 21, alpha = 0.7)+
+  labs(size = 'Rural/Urban')+
+  geom_hline(yintercept = 1, color = "blue", linetype = 2, size = 0.5) +
+  scale_size_continuous(range = c(1,8.5)) +
+  scale_x_continuous(name = "Mean of Income", limits = c(0, 40000)) +
+  scale_y_continuous(name = "Gender Ratio (Male/Female)(%)", limits = c(0.75, 1.2)) +
+  theme(panel.grid.major = element_line(colour = "#d3d3d3"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())+
+  scale_fill_manual(values=c("#1EBA28","#F1A1D5"))}
+
+
+plot_urban_city<- function(data){
+  ggplot(data = data,
+             aes(x = mean_income, y = ratio, 
+               fill = urban, label = provcd))+ 
+  geom_point(aes(size = count), shape = 21, alpha = 0)+
+  geom_point(data = filter(data, 
+                           provcd %in% input$province), 
+             aes(size = count, fill=urban), shape = 21) +
+  labs(size = 'Rural/Urban')+
+  geom_hline(yintercept = 1, color = "blue", linetype = 2, size = 0.5) +
+  scale_size_continuous(range = c(1,8.5)) +
+  scale_x_continuous(name = "Mean of Income", limits = c(0, 40000)) +
+  scale_y_continuous(name = "Gender Ratio (Male/Female)(%)", limits = c(0.8, 1.2)) +
+  guides(fill=guide_legend(title='Province ID'))+
+  theme(legend.position = "bottom", 
+        panel.grid.major = element_line(colour = "#d3d3d3"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())+
+  scale_fill_manual(values=c("#1EBA28","#F1A1D5","black"))}
+
+```
+```{r 1, echo=FALSE}
+renderPlotly(
+  if (input$type == 'By Province'){
+    if(input$province=='All') {
+  pp<-plot_province(df_selected())}
+    else{
+      pp<-plot_province_city(df_selected())
+    }
+  }
+else{
+  if(input$province=='All') {
+  pp1<-plot_urban(df_selected_rural())}
+    else{
+      pp1<-plot_urban_city(df_selected_rural())
+}})
+```
+
+
+
+Explanation
+=======================================================================
+
+- From the graph with by province and all provinces in 2010, we can see that in majority of provinces, the gender ratio is less than 1, which means more female than male. The distribution of mean income by province dispersed widely and the graph does not indicate specific relationship between gender ratio and mean income by provinces. Further if we change the category into by rural/urban, we can see that mean income of rural regions is relatively lower than urban regions and gender ratio is lower in urban regions than rural regions which means more women live in urban regions. However, it is hard to tell there is any relationship between gender ratio and mean income in 2010 by province level and by urban/rural level.If we see the graph with the data in 2012, we can see more clear relationship between gender ratio and mean of income. From the graph with by province and all provinces, we can observe that the province with larger gender ratio, which means more man than woman, has relatively lower mean of income than the province with lower gender ratio. As in 2010, the province Beijing and Shanghai has higher mean of income among all the provinces and also has lower gender ratio. Further looking at by urban/rural level, we can observe that this relationship holds in rural regions while the relationship does not hold in urban region. However, the gender ratio is still relatively lower in the urban regions than rural region. So here, we can say that the population of rural region may take large portion to the whole population in provinces so this trend in rural region lead to the overall trend. However, total gender ratio is close to 1 but the gender ratio by province and by urban/rural level is quite biased to have lower gender ratio. So from this point, we potentially consider that our data set is biased in the distribution of gender by province, or the number of respondent in each region has large variance so that the gender ratio also can be biased. To remedy this problem, we can further conduct the analysis within same region or add and control other variables to make robust results. 
+
+
+- I choose the bubble chart to see the relationship and distribution of mean of income and gender ratio and to show the frequency of the respondents in each region at the same time. Since scatter plot is useful to see the basic distribution and relationship with interested variable in the dataset, I decided use the concept of scatter plot. Then, I further applied one more information, the frequency of respondent, to indicate the importance of region in China. However, the frequency of respondent in each region actually does not correspond to the population in each region as I intended, so this can be a limitation on the selection of my graphical form. 
+
+- Here, interactivity makes the audience possible to communicate with the data with their curiosity. Using the interactive selection choices in the side bar, the audience can choose the category of graph, year and if needed, can select the specific province. The default setting is by province, 2010 and to see all provinces in one graph. So this graph provides the overall and general picture of the relationship between gender ratio and mean of income. The audience first gets the idea of graph and then they can further design and observe the graph by selecting the options they are interested in. Since I have 27 provinces so it is hard to identify all the province at the same time even though we can see the information by pointing the interested bubble. So I provide the select bar to choose and see the information of the specific province. From default setting of graph, If the audience wants to look the relationship further by adding the information of living area within province, they can change the category to by urban/rural. Since the information of living area does effect the mean of income, it is worth to look at this level and observe the trend. Also I added the year choices, so if the audience wants to see the change between two years, they can observe the change on the plot by clicking the years. Thus, using interactive graphics I definitely can tell the story in the way that I intended to and can communicate the data with audience effectively. Moreover, this interactive features invoke the curiosity of the audience at first sight, so it is very efficient and useful tool to grasp the intention and deliver the idea without using lots of static graphs. 
+
+
+
